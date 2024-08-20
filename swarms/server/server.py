@@ -41,6 +41,9 @@ from swarms.prompts.conversational_RAG import (
     QA_PROMPT_TEMPLATE,
 )
 from swarms.server.responses import LangchainStreamingResponse
+from swarms.server.callback_handlers import (
+    TokenStreamingCallbackHandler, SourceDocumentsStreamingCallbackHandler
+)
 from swarms.server.server_models import ChatRequest, Role
 from swarms.server.vector_store import VectorStorage
 
@@ -249,7 +252,12 @@ async def chat(request: ChatRequest):
     return LangchainStreamingResponse(
         chain=chain,
         config=json_config,
-        run_mode="async"
+        run_mode="async",
+        callbacks=[
+            # StreamingStdOutCallbackHandler(),
+            TokenStreamingCallbackHandler(output_key="answer"),
+            SourceDocumentsStreamingCallbackHandler(),
+        ],
     )
 
 @app.get("/")
@@ -274,12 +282,12 @@ def favicon():
 logging.basicConfig(level=logging.ERROR)
 
 
-# @app.exception_handler(HTTPException)
-# async def http_exception_handler(r: Request, exc: HTTPException):
-#     """Log and return exception details in response."""
-#     logging.error(
-#         "HTTPException: %s executing request: %s", exc.detail, r.base_url
-#     )
-#     return JSONResponse(
-#         status_code=exc.status_code, content={"detail": exc.detail}
-#     )
+@app.exception_handler(HTTPException)
+async def http_exception_handler(r: Request, exc: HTTPException):
+    """Log and return exception details in response."""
+    logging.error(
+        "HTTPException: %s executing request: %s", exc.detail, r.base_url
+    )
+    return JSONResponse(
+        status_code=exc.status_code, content={"detail": exc.detail}
+    )
